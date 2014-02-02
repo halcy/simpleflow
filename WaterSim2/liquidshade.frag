@@ -1,0 +1,105 @@
+#version 420 core
+
+// Shades liquids
+
+// Parameters from the vertex shader
+in vec2 coords;
+
+// Textures
+uniform sampler2D environmentTexture;
+uniform sampler2D particleTexture;
+uniform sampler2D particleThicknessTexture;
+
+// Uniforms
+uniform vec2 screenSize;
+uniform mat4 projection;
+
+// Output
+out vec4 outColor;
+
+vec3 eyespacePos(vec2 pos) {
+	float depth = texture(particleTexture, pos);
+	pos = (pos - vec2(0.5f)) * 2.0f;
+	return(depth * vec3(-pos.x * projection[0][0], -pos.y * projection[1][1], 1.0f));
+}
+
+// Compute eye-space normal. Adapted from PySPH.
+vec3 eyespaceNormal(vec2 pos) {
+	// Width of one pixel
+	vec2 dx = vec2(1.0f / screenSize.x, 0.0f);
+	vec2 dy = vec2(0.0f, 1.0f / screenSize.y);
+
+	// Central z
+	float zc =  texture(particleTexture, pos);
+
+	// Derivatives of z
+	// For shading, one-sided only-the-one-that-works version
+	float zdxp = texture(particleTexture, pos + dx);
+	float zdxn = texture(particleTexture, pos - dx);
+	float zdx = (zdxp == 0.0f) ? (zdxn == 0.0f ? 0.0f : (zc - zdxn)) : (zdxp - zc);
+
+	float zdyp = texture(particleTexture, pos + dy);
+	float zdyn = texture(particleTexture, pos - dy);
+	float zdy = (zdyp == 0.0f) ? (zdyn == 0.0f ? 0.0f : (zc - zdyn)) : (zdyp - zc);
+
+	// Projection inversion
+	float cx = 2.0f / (screenSize * -projection[0][0]);
+	float cy = 2.0f / (screenSize.y * -projection[1][1]);
+
+	// Screenspace coordinates
+	float sx = floor(pos * (screenSize - 1.0f));
+	float sy = floor(pos.y * (screenSize.y - 1.0f));
+	float wx = (screenSize - 2.0f * sx) / (screenSize * projection[0][0]);
+	float wy = (screenSize.y - 2.0f * sy) / (screenSize.y * projection[1][1]);
+
+	// Eyespace position derivatives
+	vec3 pdx = vec3(cx * zc + wx * zdx, wy * zdx, zdx);
+	vec3 pdy = vec3(wx * zdy, cy * zc + wy * zdy, zdy);
+
+	return normalize(cross(pdx, pdy));
+}
+
+// Calculate fresnel coefficient
+// Schlicks approximation is for lamers
+float snell(float rr1, float rr2, vec3 n, vec3 d) {
+	float r = rr1 / rr2;
+	float theta1 = dot(n, -d);
+	float theta2 = sqrt(1.0f - r * r * (1.0f - theta1 * theta1));
+
+	// Figure out what the Fresnel equations say about what happens next
+	float rs = (rr1 * theta1 - rr2 * theta2) / (rr1 * theta1 + rr2 * theta2);
+	rs = rs * rs;
+	float rp = (rr1 * theta2 - rr2 * theta1) / (rr1 * theta2 + rr2 * theta1);
+	rp = rp * rp;
+
+	return((rs + rp) / 2.0f);
+}
+
+void main() {
+	float particleDepth = texture(particleTexture, coords);
+	float particleThickness = texture(particleThicknessTexture, coords);
+
+	vec3 normal = eyespaceNormal(coords);
+	if(particleDepth == 0.0f) {
+		outColor = vec4(0.0f);
+	}
+	else {
+		vec3 lightpos = vec3(0.0f, 0.0f, 2.0f);
+		vec3 pos = eyespacePos(coords);
+		vec3 toLight = normalize(lightpos - pos);
+		float thickness = vec4(particleThickness) / 1.0f;
+		float lambert = max(0.0f, dot(toLight, normal));
+		vec3 fromEye = normalize(pos);
+		vec3 reflectedEye = normalize(reflect(fromEye, normal));
+		float specular = clamp(snell(1.0f, 1.5f, normal, fromEye), 0.0f, 1.0f);
+		vec4 environmentColor = texture(environmentTexture, reflectedEye.xy / 2.0f + vec2(0.5f));
+		vec4 particleColor = exp(-vec4(0.6f, 0.2f, 0.05f, 3.0f) * thickness);
+		particleColor.w = clamp(1.0f - particleColor.w, 0.0f, 1.0f);
+		particleColor.rgb = (lambert + 0.2f) * particleColor.rgb * (1.0f - specular) + specular * environmentColor.rgb;
+		
+		/*particleColor.rgb = specular * environmentColor.rgb;
+		particleColor.w = 1.0f;*/
+
+		outColor = particleColor;
+	}
+}
