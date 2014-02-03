@@ -37,6 +37,9 @@ struct {
 	cl_mem terrainBuffer;
 
 	GLuint elementBuffer;
+
+	float windAngle;
+	float windPower;
 } particles;
 
 struct {
@@ -71,7 +74,7 @@ struct {
 	GLuint normalviewMatrix;
 	GLuint projectionMatrix;
 
-	GLuint texture;
+	GLuint terrainTexture;
 } objectShader;
 
 struct {
@@ -536,7 +539,7 @@ void initShaders() {
 	objectShader.modelviewMatrix = glGetUniformLocation(objectShader.shaderProgram, "modelview");
 	objectShader.normalviewMatrix = glGetUniformLocation(objectShader.shaderProgram, "normalview");
 	objectShader.projectionMatrix = glGetUniformLocation(objectShader.shaderProgram, "projection");
-	objectShader.texture = glGetUniformLocation(objectShader.shaderProgram, "texture");
+	objectShader.terrainTexture = glGetUniformLocation(objectShader.shaderProgram, "terrainTexture");
 
 	// Bind output variables
 	glBindFragDataLocation(objectShader.shaderProgram, 0, "outColor");
@@ -809,6 +812,12 @@ void draw() {
 
 	clSetKernelArg(openCLKernels.simulationKernel, 11, sizeof(cl_mem), &particles.terrainBuffer);
 
+	PaddedVector windDir = PadVector(
+		TransformVector(YAxisRotationMatrix(particles.windAngle), MakeVector(1.0f, 0.0f, 0.0f))
+	);
+	clSetKernelArg(openCLKernels.simulationKernel, 12, sizeof(cl_float) * 4, &windDir);
+	clSetKernelArg(openCLKernels.simulationKernel, 13, sizeof(cl_float), &particles.windPower);
+
 	clRunKernel(openCLKernels.simulationKernel, workSize, workgroupSize);
 
 	// Release buffers back to OpenGL
@@ -858,6 +867,8 @@ void draw() {
 	// Normal view matrix - inverse transpose of modelview.
 	Matrix normalview = MatrixTranspose(FastMatrixInverse(modelview));
 	MatrixAsUniform(objectShader.normalviewMatrix, normalview);
+
+	// Set heightmap texture
 
 	// Send element buffer to GPU and draw.
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, terrain.elementBuffer);
@@ -1151,6 +1162,25 @@ void handleKeypress(unsigned char k, int x, int y) {
 		case 27: // Escape -> die.
 			exit(0);
 		break;
+
+		case 'y':
+			particles.windAngle = particles.windAngle - 0.05f;
+		break;
+
+		case 'c':
+			particles.windAngle = particles.windAngle + 0.05f;
+		break;
+
+		case 'r':
+			particles.windPower = max(0.0f, min(particles.windPower + 0.1f, 2.0f));
+			printf("Wind power: %f\n", particles.windPower);
+		break;
+
+		case 'f':
+			particles.windPower = max(0.0f, min(particles.windPower - 0.1f, 2.0f));
+			printf("Wind power: %f\n", particles.windPower);
+		break;
+
 		case 'p': // Neat for debugging. Wait a second on 'p'.
 			Sleep(1000);
 		break;

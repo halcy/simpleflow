@@ -5,10 +5,10 @@
 #define WINDOW_TITLE "Particle Fluids"
 #define WINDOW_WIDTH 1280
 #define WINDOW_HEIGHT 720
-//#define FULLSCREEN
+// #define FULLSCREEN
 
 // OpenGL Debug Mode toggle
-#define DEBUG
+// #define DEBUG
 
 // Particle settings
 #define NUM_PARTICLES (4096*64)

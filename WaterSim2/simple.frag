@@ -7,7 +7,7 @@
 in vec3 objectPos;
 
 // Textures
-uniform sampler2D texture;
+uniform sampler2D terrainTexture;
 
 // Output
 out vec4 outColor;

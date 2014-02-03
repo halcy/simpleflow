@@ -235,13 +235,13 @@ float4 getForce(
 	const float4* particleVelocity, 
 	const float4* particleData,
 	float timeTotal,
-	int numParticles
+	int numParticles,
+	float4 windDirection,
+	float windPower
 ) {
 	float4 force = GRAVITY;
 
 	// "Wind"
-	float windPower = 1.5f;
-	float4 windDirection = normalize((float4){1.0f, 0.0f, 1.0f, 0.0f});
 	if(particle.y > -AABB_Y + 0.5f) {
 		float windRunner = dot(windDirection, particle);
 		float windAffect = min(1.0f, max(0.0f, particle.y + 0.5f + AABB_Y));
@@ -394,7 +394,9 @@ __kernel void IntegratePosition(
 	const float dT,
 	const float timeTotal,
 	const int numParticles,
-	const __global float* heightData
+	const __global float* heightData,
+	const float4 windDir,
+	const float windPower
 ) {
 	int gid = get_global_id(0);
 	if(gid < numParticles) {
@@ -421,7 +423,18 @@ __kernel void IntegratePosition(
 		);
 
 		// Calculate initial force
-		float4 F0 = getForce(x0, v0, d0, particlesClose, particleVelocityClose, particleDataClose, timeTotal, particlesCloseCount);
+		float4 F0 = getForce(
+			x0, 
+			v0, 
+			d0, 
+			particlesClose, 
+			particleVelocityClose, 
+			particleDataClose, 
+			timeTotal, 
+			particlesCloseCount,
+			windDir,
+			windPower
+		);
 
 		// "Calculate" acceleration
 		float4 a0 = F0;
@@ -507,10 +520,6 @@ __kernel void ReorderByGrid(
 		int newIndex = gridCellStart + gridOffset;
 
 		// Copy
-		/*particle.x = gridSum[gridCell];
-		particle.y = gridSize[gridCell];
-		particle.z = gridOffset;
-		particle.w = newIndex;*/
 		particle.w = 0.0f;
 		particlesOut[newIndex] = particle;
 		particleVelocityOut[newIndex] = particleVelocityIn[gid];

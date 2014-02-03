@@ -54,25 +54,25 @@ vec3 eyespaceNormal(vec2 pos) {
 	float zdy = (zdyp == 0.0f) ? (zdyn == 0.0f ? 0.0f : (zc - zdyn)) : (zdyp - zc);
 
 	// Projection inversion
-	float cx = 2.0f / (screenSize * -projection[0][0]);
+	float cx = 2.0f / (screenSize.x * -projection[0][0]);
 	float cy = 2.0f / (screenSize.y * -projection[1][1]);
 
 	// Screenspace coordinates
-	float sx = floor(pos * (screenSize - 1.0f));
+	float sx = floor(pos * (screenSize.x - 1.0f));
 	float sy = floor(pos.y * (screenSize.y - 1.0f));
-	float wx = (screenSize - 2.0f * sx) / (screenSize * projection[0][0]);
+	float wx = (screenSize.x - 2.0f * sx) / (screenSize.x * projection[0][0]);
 	float wy = (screenSize.y - 2.0f * sy) / (screenSize.y * projection[1][1]);
 
 	// Eyespace position derivatives
-	vec3 pdx = vec3(cx * zc + wx * zdx, wy * zdx, zdx);
-	vec3 pdy = vec3(wx * zdy, cy * zc + wy * zdy, zdy);
+	vec3 pdx = normalize(vec3(cx * zc + wx * zdx, wy * zdx, zdx));
+	vec3 pdy = normalize(vec3(wx * zdy, cy * zc + wy * zdy, zdy));
 
 	return normalize(cross(pdx, pdy));
 }
 
 // Calculate fresnel coefficient
 // Schlicks approximation is for lamers
-float snell(float rr1, float rr2, vec3 n, vec3 d) {
+float fresnel(float rr1, float rr2, vec3 n, vec3 d) {
 	float r = rr1 / rr2;
 	float theta1 = dot(n, -d);
 	float theta2 = sqrt(1.0f - r * r * (1.0f - theta1 * theta1));
@@ -104,13 +104,13 @@ void main() {
 		float lambert = max(0.0f, dot(toLight, normal));
 		vec3 fromEye = normalize(pos);
 		vec3 reflectedEye = normalize(reflect(fromEye, normal));
-		vec3 reflectedEyeWorld = (modelview * vec4(reflectedEye, 1.0f)).xyz;
-		float specular = clamp(snell(1.0f, 1.5f, normal, fromEye), 0.0f, 1.0f);
+		vec3 reflectedEyeWorld = normalize(mat3(modelview) * reflectedEye);
+		reflectedEyeWorld.y = -reflectedEyeWorld.y;
+		float specular = clamp(fresnel(1.0f, 1.5f, normal, fromEye), 0.0f, 1.0f);
 		
 		// De-specularize fast particles
 		// specular = max(0.0f, specular - (velocity / 15.0f));
 		
-		reflectedEyeWorld.y = -reflectedEyeWorld.y;
 		vec4 environmentColor = texture(environmentTexture, spheremap(reflectedEyeWorld));
 		vec4 particleColor = exp(-vec4(0.6f, 0.2f, 0.05f, 3.0f) * thickness);
 		particleColor.w = clamp(1.0f - particleColor.w, 0.0f, 1.0f);
