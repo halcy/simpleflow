@@ -14,6 +14,7 @@
     <ClCompile Include="clgl.cpp" />
     <ClCompile Include="glhelpers.cpp" />
     <ClCompile Include="glmain.cpp" />
+    <ClCompile Include="pgmloader.cpp" />
     <ClCompile Include="Vector.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -24,6 +25,7 @@
     <None Include="particles.vert" />
     <None Include="particleSimulation.cl" />
     <None Include="particlethickness.frag" />
+    <None Include="particlevelocity.frag" />
     <None Include="quad.vert" />
     <None Include="simple.frag" />
     <None Include="simple.vert" />
@@ -32,6 +34,8 @@
     <ClInclude Include="clgl.h" />
     <ClInclude Include="cubeverts.h" />
     <ClInclude Include="glhelpers.h" />
+    <ClInclude Include="pgmloader.h" />
+    <ClInclude Include="scratch.h" />
     <ClInclude Include="settings.h" />
     <ClInclude Include="Vector.h" />
   </ItemGroup>

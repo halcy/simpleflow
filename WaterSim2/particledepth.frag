@@ -10,6 +10,9 @@ in float eyespaceRadius;
 uniform mat4 projection;
 uniform vec2 screenSize;
 
+// Textures
+uniform sampler2D terrainTexture;
+
 // Output
 out float particleDepth;
 
@@ -40,5 +43,10 @@ void main() {
 	float deviceDepth = clipspacePos.z / clipspacePos.w;
 	float fragDepth = (((far - near) * deviceDepth) + near + far) / 2.0;
 	gl_FragDepth = fragDepth;
+
+	
+	if(fragDepth > texture(terrainTexture, gl_FragCoord.xy / screenSize).w) {
+		discard;
+	}
 	particleDepth = fragPos.z;
 }

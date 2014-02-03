@@ -1,6 +1,6 @@
 #version 420 core
 
-// Particle depth fragment shader
+// Particle thickness fragment shader
 
 // Parameters from the vertex shader
 in vec3 eyespacePos;

@@ -15,6 +15,12 @@ struct {
 	cl_command_queue queue;
 } openCLState;
 
+
+void __stdcall openCLError(const char *errinfo, const void *private_info, size_t cb, void *user_data) {
+	printf("OpenCL error: %s\n", errinfo);
+	getc(stdin);
+}
+
 void acquireSharedOpenCLContext() {
 	// Error code
 	cl_int clError;
@@ -70,7 +76,7 @@ void acquireSharedOpenCLContext() {
 				CL_CONTEXT_PLATFORM, (cl_context_properties)openCLState.platformId, 
                 0
             };
-			openCLState.context = clCreateContext(props, 1, &openCLState.deviceId, NULL, NULL, &clError);
+			openCLState.context = clCreateContext(props, 1, &openCLState.deviceId, &openCLError, NULL, &clError);
         #endif
     #endif
 
@@ -130,8 +136,10 @@ cl_program clProgramFromFile(char* fileName) {
 	char *programSrc = loadFile(fileName);
 	size_t programSrcLength = strlen(programSrc);
 	cl_program program = clCreateProgramWithSource(openCLState.context, 1, (const char**)&programSrc, &programSrcLength, NULL);
-	
-	if(clBuildProgram(program, 1, &openCLState.deviceId, NULL, NULL, NULL) != CL_SUCCESS) {
+	//char* opts = "-Werror -cl-opt-disable";
+	//char* opts = "-Werror";
+	char* opts = "-cl-mad-enable -cl-no-signed-zeros -cl-unsafe-math-optimizations -cl-finite-math-only -cl-fast-relaxed-math -cl-strict-aliasing";
+	if(clBuildProgram(program, 1, &openCLState.deviceId, opts, NULL, NULL) != CL_SUCCESS) {
 		size_t logSize;
 		clGetProgramBuildInfo(program, openCLState.deviceId, CL_PROGRAM_BUILD_LOG, 0, NULL, &logSize);
 
@@ -224,14 +232,18 @@ void clRunKernel(cl_kernel kernel, const size_t minWorkSize[3], const size_t wor
 	}
 
 	size_t workSize[3];
-	for(int i = 0; i < dimensions; i++) {
+	/*for(int i = 0; i < dimensions; i++) {
 		workSize[i] = adjustWorkSize(minWorkSize[i], workgroupSize[i]);
-	}
+	}*/
 
-	cl_int clErr = clEnqueueNDRangeKernel(openCLState.queue, kernel, dimensions, NULL, workSize, workgroupSize, 0, NULL, NULL);
-	clErr != clFinish(openCLState.queue);
+	cl_int clErr = clEnqueueNDRangeKernel(openCLState.queue, kernel, dimensions, NULL, minWorkSize, workgroupSize, 0, NULL, NULL);
 	if(clErr != CL_SUCCESS) {
 		printf("Failed to run kernel: %s\n", errorToString(clErr));
+		fgetc(stdin);
+	}
+	clErr = clFinish(openCLState.queue);
+	if(clErr != CL_SUCCESS) {
+		printf("Failed to finish kernel: %s\n", errorToString(clErr));
 		fgetc(stdin);
 	}
 }

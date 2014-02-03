@@ -3,9 +3,26 @@
  */
 
 #include "glhelpers.h"
+#include "Vector.h"
 
 // "THIS FUNCTION IS UNSAFE"
 #pragma warning(disable: 4996)
+
+// Look-at code
+Matrix lookatMatrix(Vector eye, Vector center, Vector up) {
+	Vector f = VectorSub(center, eye);
+	Vector fn = VectorNorm(f);
+	Vector upn = VectorNorm(up);
+	Vector s = VectorCross(fn, upn);
+	Vector u = VectorCross(s, fn);
+	Matrix lookat = MakeMatrix(
+		 s.x, s.y, s.z, 0.0f,
+		 u.x, u.y, u.z, 0.0f,
+		-f.x, -f.y, -f.z, 0.0f,
+		0.0f, 0.0f, 0.0f, 1.0f
+	);
+	return lookat;
+}
 
 // Simple helper to make a single buffer object.
 GLuint makeBO(GLenum type, void* data, GLsizei size, int accessFlags) {

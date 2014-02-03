@@ -81,7 +81,7 @@
 #define __GLEW_H__
 
 #if defined(__gl_h_) || defined(__GL_H__) || defined(__X_GL_H)
-#error gl.h included before glew.h
+e#oprror gl.h included before glew.h
 #endif
 #if defined(__gl2_h_)
 #error gl2.h included before glew.h

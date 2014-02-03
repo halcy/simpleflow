@@ -9,6 +9,8 @@
 #include <GL/glew.h>
 #include <GL/freeglut.h>
 
+#include "Vector.h"
+
 #define min(a,b) ((a)<(b)?(a):(b))
 #define max(a,b) ((a)>(b)?(a):(b))
 
@@ -19,5 +21,6 @@ GLuint makeShaderProgram(GLuint vertexShader, GLuint fragmentShader);
 GLuint loadTexture(const char *filename);
 void registerGlDebugLogger(unsigned int logLevel);
 char* loadFile(char* name);
+Matrix lookatMatrix(Vector eye, Vector center, Vector up);
 
 #endif

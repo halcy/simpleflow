@@ -13,6 +13,7 @@ uniform vec2 screenSize;
 // Parameters passed to the fragment shader.
 out vec3 eyespacePos;
 out float eyespaceRadius;
+out float velocity;
 
 void main() {
 	// Transform
@@ -24,4 +25,7 @@ void main() {
 	// Set up variables for rasterizer
 	gl_Position = clipspacePos;
 	gl_PointSize = eyespaceRadius;
+
+	// Send velocity to fragment shader
+	velocity = vertex.w;
 }

@@ -76,8 +76,8 @@ void main() {
 		outDepth = 0.0f;
 	}
 	else {
-		const float dt = 0.001f;
-		const float dzt = 500.0f;
+		const float dt = 0.0005f;
+		const float dzt = 1000.0f;
 		vec3 dxyz = meanCurvature(coords);
 
 		// Vary contribution with absolute depth differential - trick from pySPH
