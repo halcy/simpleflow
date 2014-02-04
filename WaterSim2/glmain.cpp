@@ -99,9 +99,9 @@ void initObjects() {
 
 	srand(666);
 	for(int i = 0; i < NUM_PARTICLES; i++) {
-		particleData[i].x = centeredUnitRand() * 3.0f * 1.99f;
-		particleData[i].y = centeredUnitRand() * 3.0f * 1.99f;
-		particleData[i].z = centeredUnitRand() * 3.0f * 1.99f;
+		particleData[i].x = centeredUnitRand() * 1.0f * 1.99f;
+		particleData[i].y = centeredUnitRand() * 1.0f * 1.99f;
+		particleData[i].z = centeredUnitRand() * 1.0f * 1.99f;
 		particleData[i].w = 0.0f;
 		particleElements[i] = i;
 	}
@@ -492,40 +492,42 @@ void update() {
 	
 	// Input is win32 only
 	HWND window = GetActiveWindow();
-	POINT p;
-	GetCursorPos(&p);
-	ScreenToClient(window, &p);
-	glutWarpPointer(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
+	if(window == GetForegroundWindow()) {
+		POINT p;
+		GetCursorPos(&p);
+		ScreenToClient(window, &p);
+		glutWarpPointer(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
 
-	float angleX = (p.x - (WINDOW_WIDTH / 2)) * CAM_ROTSPEED;
-	Quaternion rotX = RotationQuaternion(-angleX, MakeVector(0, 1, 0));
-	camera.front = TransformVector(RotationMatrixFromQuaternion(rotX), camera.front);
+		float angleX = (p.x - (WINDOW_WIDTH / 2)) * CAM_ROTSPEED;
+		Quaternion rotX = RotationQuaternion(-angleX, MakeVector(0, 1, 0));
+		camera.front = TransformVector(RotationMatrixFromQuaternion(rotX), camera.front);
 
-	camera.elevation += (p.y - (WINDOW_HEIGHT / 2)) * CAM_ROTSPEED;
-	camera.elevation = max(-0.9f, min(camera.elevation, 0.9f));
+		camera.elevation += (p.y - (WINDOW_HEIGHT / 2)) * CAM_ROTSPEED;
+		camera.elevation = max(-0.9f, min(camera.elevation, 0.9f));
 
-	if(GetAsyncKeyState('W') != 0) {
-		camera.pos = VectorAdd(camera.pos, VectorMul(camera.front, CAM_MOVESPEED));
-	}
+		if(GetAsyncKeyState('W') != 0) {
+			camera.pos = VectorAdd(camera.pos, VectorMul(camera.front, CAM_MOVESPEED));
+		}
 
-	if(GetAsyncKeyState('S') != 0) {
-		camera.pos = VectorAdd(camera.pos, VectorMul(camera.front, -CAM_MOVESPEED));
-	}
+		if(GetAsyncKeyState('S') != 0) {
+			camera.pos = VectorAdd(camera.pos, VectorMul(camera.front, -CAM_MOVESPEED));
+		}
 
-	if(GetAsyncKeyState('E') != 0) {
-		camera.pos = VectorAdd(camera.pos, VectorMul(camera.up, CAM_MOVESPEED));
-	}
+		if(GetAsyncKeyState('E') != 0) {
+			camera.pos = VectorAdd(camera.pos, VectorMul(camera.up, CAM_MOVESPEED));
+		}
 
-	if(GetAsyncKeyState('Q') != 0) {
-		camera.pos = VectorAdd(camera.pos, VectorMul(camera.up, -CAM_MOVESPEED));
-	}
+		if(GetAsyncKeyState('Q') != 0) {
+			camera.pos = VectorAdd(camera.pos, VectorMul(camera.up, -CAM_MOVESPEED));
+		}
 
-	if(GetAsyncKeyState('D') != 0) {
-		camera.pos = VectorAdd(camera.pos, VectorMul(VectorCross(camera.front, camera.up), CAM_MOVESPEED));
-	}
+		if(GetAsyncKeyState('D') != 0) {
+			camera.pos = VectorAdd(camera.pos, VectorMul(VectorCross(camera.front, camera.up), CAM_MOVESPEED));
+		}
 
-	if(GetAsyncKeyState('A') != 0) {
-		camera.pos = VectorAdd(camera.pos, VectorMul(VectorCross(camera.front, camera.up), -CAM_MOVESPEED));
+		if(GetAsyncKeyState('A') != 0) {
+			camera.pos = VectorAdd(camera.pos, VectorMul(VectorCross(camera.front, camera.up), -CAM_MOVESPEED));
+		}
 	}
 }
 

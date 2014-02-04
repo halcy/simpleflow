@@ -76,7 +76,7 @@ void main() {
 		outDepth = 0.0f;
 	}
 	else {
-		const float dt = 0.0005f;
+		const float dt = 0.00055f;
 		const float dzt = 1000.0f;
 		vec3 dxyz = meanCurvature(coords);
 
