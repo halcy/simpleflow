@@ -58,7 +58,7 @@ vec3 eyespaceNormal(vec2 pos) {
 	float cy = 2.0f / (screenSize.y * -projection[1][1]);
 
 	// Screenspace coordinates
-	float sx = floor(pos * (screenSize.x - 1.0f));
+	float sx = floor(pos.x * (screenSize.x - 1.0f));
 	float sy = floor(pos.y * (screenSize.y - 1.0f));
 	float wx = (screenSize.x - 2.0f * sx) / (screenSize.x * projection[0][0]);
 	float wy = (screenSize.y - 2.0f * sy) / (screenSize.y * projection[1][1]);
@@ -92,26 +92,32 @@ void main() {
 	float velocity = texture(velocityTexture, coords);
 
 	vec3 normal = eyespaceNormal(coords);
+	normal = normal * inverse(mat3(modelview));
+	normal.xz = normal.zx;
+
+	vec3 lightDir = vec3(1.0f, 1.0f, -1.0f);
 
 	if(particleDepth == 0.0f) {
 		outColor = vec4(0.0f);
 	}
 	else {
-		vec3 lightpos = vec3(0.0f, 0.0f, 2.0f);
 		vec3 pos = eyespacePos(coords);
-		vec3 toLight = normalize(lightpos - pos);
+		pos = (vec4(pos, 1.0f) * inverse(modelview)).xyz;
+
 		float thickness = vec4(particleThickness) / 10.0f;
-		float lambert = max(0.0f, dot(toLight, normal));
+
+		float lambert = max(0.0f, dot(normalize(lightDir), normal));
+		
 		vec3 fromEye = normalize(pos);
+		
+		fromEye.xz = -fromEye.xz;
 		vec3 reflectedEye = normalize(reflect(fromEye, normal));
-		vec3 reflectedEyeWorld = normalize(mat3(modelview) * reflectedEye);
-		reflectedEyeWorld.y = -reflectedEyeWorld.y;
-		float specular = clamp(fresnel(1.0f, 1.5f, normal, fromEye), 0.0f, 1.0f);
-		
+		float specular = clamp(fresnel(1.0f, 1.5f, normal, fromEye), 0.0f, 0.4f);
+
 		// De-specularize fast particles
-		// specular = max(0.0f, specular - (velocity / 15.0f));
+		//specular = max(0.0f, specular - (velocity / 15.0f));
 		
-		vec4 environmentColor = texture(environmentTexture, spheremap(reflectedEyeWorld));
+		vec4 environmentColor = texture(environmentTexture, spheremap(reflectedEye));
 		vec4 particleColor = exp(-vec4(0.6f, 0.2f, 0.05f, 3.0f) * thickness);
 		particleColor.w = clamp(1.0f - particleColor.w, 0.0f, 1.0f);
 		particleColor.rgb = (lambert + 0.2f) * particleColor.rgb * (1.0f - specular) + specular * environmentColor.rgb;
@@ -121,8 +127,10 @@ void main() {
 		particleColor.w = 1.0f;*/
 
 		// Add some superfake foam colouring
-		// particleColor += lambert * vec4(velocity / 15.0f);
+		//particleColor += lambert * vec4(velocity / 15.0f);
 		
 		outColor = particleColor;
+		//outColor = environmentColor;
+		//outColor = vec4(lambert, lambert, lambert, 1.0f);
 	}
 }

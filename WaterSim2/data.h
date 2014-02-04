@@ -55,6 +55,8 @@ struct {
 	GLuint projectionMatrix;
 
 	GLuint terrainTexture;
+	GLuint lowTexture;
+	GLuint highTexture;
 } objectShader;
 
 struct {
@@ -158,6 +160,9 @@ struct {
 	GLuint elementBuffer;
 
 	GLuint envTexture;
+
+	GLuint lowTexture;
+	GLuint highTexture;
 } terrain;
 
 #endif

@@ -47,5 +47,5 @@ void main() {
 	if(fragDepth > texture(terrainTexture, gl_FragCoord.xy / screenSize).w) {
 		discard;
 	}
-	particleDepth = fragPos.z;
+	particleDepth = clipspacePos.z;
 }

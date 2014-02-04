@@ -147,6 +147,8 @@ void initObjects() {
 
 	// Load textures.
 	terrain.envTexture = loadTexture("skymap_b.tga");
+	terrain.lowTexture = loadTexture("sand.tga");
+	terrain.highTexture = loadTexture("stone.tga");
 
 	// Create a VAO and bind it
 	glGenVertexArrays(1, &vertexArray);
@@ -371,6 +373,8 @@ void initShaders() {
 	objectShader.normalviewMatrix = glGetUniformLocation(objectShader.shaderProgram, "normalview");
 	objectShader.projectionMatrix = glGetUniformLocation(objectShader.shaderProgram, "projection");
 	objectShader.terrainTexture = glGetUniformLocation(objectShader.shaderProgram, "terrainTexture");
+	objectShader.lowTexture = glGetUniformLocation(objectShader.shaderProgram, "lowTexture");
+	objectShader.highTexture = glGetUniformLocation(objectShader.shaderProgram, "highTexture");
 
 	// Bind output variables
 	glBindFragDataLocation(objectShader.shaderProgram, 0, "outColor");
@@ -711,6 +715,15 @@ void draw() {
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, terrain.heightTexture );
 	glUniform1i(objectShader.terrainTexture, 0);
+
+	// Set color textures
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, terrain.lowTexture);
+	glUniform1i(objectShader.lowTexture, 1);
+
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, terrain.highTexture);
+	glUniform1i(objectShader.highTexture, 2);
 
 	// Turn off culling
 	glDisable(GL_CULL_FACE);

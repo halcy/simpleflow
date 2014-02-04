@@ -9,13 +9,14 @@ in vec3 worldPos;
 
 // Textures
 uniform sampler2D terrainTexture;
+uniform sampler2D lowTexture;
+uniform sampler2D highTexture;
 
 // Output
 out vec4 outColor;
 
 float heightmap(vec2 coords) {
-	//return texture(terrainTexture, coords) * 128.0f - 4.0f;
-	return texture(terrainTexture, coords) * 32.0f - 1.0f;
+	return texture(terrainTexture, coords);
 }
 
 vec2 heightmapCoords(vec2 coordsIn) {
@@ -35,15 +36,20 @@ vec3 grad(vec2 pos) {
 
 void main() {
 	vec2 heightcoords = heightmapCoords(objectPos.xz);
-	float heightcol = heightmap(heightcoords);
+	float height = heightmap(heightcoords);
+	
+	vec4 lowcol = texture(lowTexture, heightcoords * 32.0f) * 1.3f;
+	vec4 highcol = texture(highTexture, heightcoords * 16.0f);
+	float blend = smoothstep(0.03f,  0.04f, height);
+	vec4 texCol = blend * highcol + (1.0f - blend) * lowcol;
 
 	vec3 normal = normalize(grad(heightcoords));
 	normal.y = -normal.y;
 	
 	// Sun is at infinity
-	vec3 lightDir = vec3(1.0f, 0.0f, -1.0f);
+	vec3 lightDir = vec3(1.0f, 1.0f, -1.0f);
 	float lambert = max(0.0f, dot(normalize(lightDir), normal));
-	float light = (lambert + 0.6f) * 0.5f;
+	float light = lambert + 0.3f;
 	
-	outColor = vec4(light, light, light, gl_FragCoord.z);
+	outColor = vec4(texCol.rgb * light, gl_FragCoord.z);
 }
