@@ -33,6 +33,7 @@
   <ItemGroup>
     <ClInclude Include="clgl.h" />
     <ClInclude Include="cubeverts.h" />
+    <ClInclude Include="data.h" />
     <ClInclude Include="glhelpers.h" />
     <ClInclude Include="pgmloader.h" />
     <ClInclude Include="scratch.h" />

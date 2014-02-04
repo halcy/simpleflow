@@ -261,6 +261,37 @@ GLuint loadTexture(const char *filename) {
 	return texture;
 }
 
+
+// Load a texture from a TGA file.
+GLuint genFloatTexture(float *data, int width, int height) {	
+	// Generate texture, bind as active texture.
+	GLuint texture;
+	glGenTextures(1, &texture);
+	glBindTexture(GL_TEXTURE_2D, texture);
+
+	// Texture parameters
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAX_LEVEL, 0);
+
+	// Load pixels from buffer into texture.
+	glTexImage2D(
+		GL_TEXTURE_2D,
+		0,
+		GL_R32F,
+		width,
+		height,
+		0,
+		GL_RED,
+		GL_FLOAT,
+		data
+	);
+
+	return texture;
+}
+
 // Debug context log printer
 void printDebugLog(unsigned int source, unsigned int type, unsigned int id, unsigned int severity, const char* message) {
 	char debSource[16], debType[20], debSev[5];

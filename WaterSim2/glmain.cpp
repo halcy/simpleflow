@@ -16,172 +16,14 @@
 // Include CL/GL interop tools.
 #include "clgl.h"
 
-// Buffer objects
-struct {
-	GLuint vertexBuffer;
-	GLuint elementBuffer;
-} cube;
-
-struct {
-	int currentBuffer;
-	GLuint vertexBuffer[2];
-	
-	cl_mem particleBuffer[2];
-	cl_mem velocityBuffer[2];
-	cl_mem dataBuffer;
-	cl_mem gridSizeBuffer;
-	cl_mem gridBuffer[2];
-	cl_mem offsetBuffer;
-	cl_mem cellSelectBuffer;
-
-	cl_mem terrainBuffer;
-
-	GLuint elementBuffer;
-
-	float windAngle;
-	float windPower;
-} particles;
-
-struct {
-	GLuint vertexBuffer;
-	GLuint elementBuffer;
-} screenQuad;
-
-struct {
-	GLuint backgroundFBO;
-	GLuint backgroundTexture;
-
-	GLuint particleFBO[2];
-	GLuint particleTexture[2];
-
-	GLuint velocityFBO;
-	GLuint particleVelocityTexture;
-
-	GLuint particleThicknessFBO[2];
-	GLuint particleThicknessTexture[2];
-
-	GLuint particleColorFBO;
-	GLuint particleColorTexture;
-} framebuffers;
-
-// A bunch of shaders
-struct {
-	GLuint shaderProgram;
-
-	GLuint vertexPosition;
-
-	GLuint modelviewMatrix;
-	GLuint normalviewMatrix;
-	GLuint projectionMatrix;
-
-	GLuint terrainTexture;
-} objectShader;
-
-struct {
-	GLuint shaderProgram;
-
-	GLuint vertexPosition;
-
-	GLuint modelviewMatrix;
-	GLuint projectionMatrix;
-	GLuint screenSize;
-
-	GLuint terrainTexture;
-} particleShader;
-
-struct {
-	GLuint shaderProgram;
-
-	GLuint vertexPosition;
-
-	GLuint modelviewMatrix;
-	GLuint projectionMatrix;
-	GLuint screenSize;
-} particleThicknessShader;
-
-struct {
-	GLuint shaderProgram;
-
-	GLuint vertexPosition;
-
-	GLuint modelviewMatrix;
-	GLuint projectionMatrix;
-	GLuint screenSize;
-} particleVelocityShader;
-
-struct {
-	GLuint shaderProgram;
-
-	GLuint vertexPosition;
-
-	GLuint projectionMatrix;
-	GLuint screenSize;
-
-	GLuint particleTexture;
-} curvatureFlowShader;
-
-struct {
-	GLuint shaderProgram;
-
-	GLuint vertexPosition;
-
-	GLuint projectionMatrix;
-	GLuint modelviewMatrix;
-	GLuint screenSize;
-
-	GLuint environmentTexture;
-	GLuint particleTexture;
-	GLuint particleThicknessTexture;
-	GLuint velocityTexture;
-} liquidShadeShader;
-
-struct {
-	GLuint shaderProgram;
-
-	GLuint vertexPosition;
-
-	GLuint modelviewMatrix;
-
-	GLuint backgroundTexture;
-	GLuint particleTexture;
-	GLuint terrainTexture;
-} compositionShader;
-
-// A bunch of kernels
-struct {
-	cl_program program;
-
-	cl_kernel gridClearKernel;
-	cl_kernel gridKernel;
-	cl_kernel prefixSumKernel;
-	cl_kernel gridReorderKernel;
-	cl_kernel dataKernel;
-	cl_kernel simulationKernel;
-} openCLKernels;
-
-struct {
-	Vector pos;
-	Vector front;
-	Vector up;
-	float elevation;
-} camera;
-
-// A terrain
-struct {
-	float* heightData;
-
-	GLuint vertexBuffer;
-	GLuint elementBuffer;
-} terrain;
-
-// Textures
-GLuint defaultTextureData;
+// Data like shaders and such
+#include "data.h"
 
 // Vertex array object
 GLuint vertexArray;
 
-// Status variable
-float angle;
+// Time variable
+float time;
 
 // Forward declaration
 void draw();
@@ -197,12 +39,12 @@ typedef struct particle_t {
 	float w;
 } particle;
 
-#include "cubeverts.h"
-
 // [-0.5, 0.5] RNG
 float centeredUnitRand() {
 	return (((float)rand()/(float)RAND_MAX) - 0.5f);
 }
+
+//////////////////////////////// INIT FUNCTIONS ////////////////////////////////
 
 // Make a window for doing OpenGL
 void makeWindow(int argc, char** argv) {
@@ -251,20 +93,6 @@ void setupGlutCallbacks() {
 
 // Initialize buffers, textures, etc.
 void initObjects() {
-	// Create a cube VBO
-	cube.vertexBuffer = makeBO(
-		GL_ARRAY_BUFFER,
-		cubeVertices,
-		sizeof(cubeVertices),
-		GL_STATIC_DRAW
-	);
-	cube.elementBuffer = makeBO(
-		GL_ELEMENT_ARRAY_BUFFER,
-		cubeElements,
-		sizeof(cubeElements),
-		GL_STATIC_DRAW
-	);
-
 	// Put a bunch of particles into space
 	particle* particleData = (particle*)malloc(sizeof(particle) * NUM_PARTICLES);
 	GLuint* particleElements = (GLuint*)malloc(sizeof(GLuint) * NUM_PARTICLES);
@@ -318,7 +146,7 @@ void initObjects() {
 	);
 
 	// Load textures.
-	defaultTextureData = loadTexture("skymap_b.tga");
+	terrain.envTexture = loadTexture("skymap_b.tga");
 
 	// Create a VAO and bind it
 	glGenVertexArrays(1, &vertexArray);
@@ -399,6 +227,9 @@ void initObjects() {
 		NULL
 	);
 	
+	// Make terrain texture
+	terrain.heightTexture = genFloatTexture(terrain.heightData, 4096, 4096);
+
 	// Make terrain geometry
 	PaddedVector* terrainVertices = (PaddedVector*)malloc(sizeof(PaddedVector) * 512 * 512);
 	for(int x = 0; x < 4096; x += 8) {
@@ -572,6 +403,8 @@ void initShaders() {
 	particleThicknessShader.projectionMatrix = glGetUniformLocation(particleThicknessShader.shaderProgram, "projection");
 	particleThicknessShader.screenSize = glGetUniformLocation(particleThicknessShader.shaderProgram, "screenSize");
 
+	particleThicknessShader.terrainTexture = glGetUniformLocation(particleThicknessShader.shaderProgram, "terrainTexture");
+
 	// Bind output variables
 	glBindFragDataLocation(particleThicknessShader.shaderProgram, 0, "particleThickness");
 
@@ -638,20 +471,22 @@ void initShaders() {
 	glBindFragDataLocation(compositionShader.shaderProgram, 0, "outColor");
 }
 
+//////////////////////// STATUS UPDATE FUNCTIONS ////////////////////////////////////////
+
 // Update status variables.
 // Called every 15ms, unless the PC is too slow.
 void updateI(int) { update(); }
 
 void update() {
 	// Update things here.
-	angle += 0.02f;
+	time += 0.02f;
 
 	// Redraw screen now, please, and call again in 15ms.
 	glutPostRedisplay();
 	glutTimerFunc(15, updateI, 0);
 
 	
-	// TODO handle input not win32 only
+	// Input is win32 only
 	HWND window = GetActiveWindow();
 	POINT p;
 	GetCursorPos(&p);
@@ -663,7 +498,7 @@ void update() {
 	camera.front = TransformVector(RotationMatrixFromQuaternion(rotX), camera.front);
 
 	camera.elevation += (p.y - (WINDOW_HEIGHT / 2)) * CAM_ROTSPEED;
-	camera.elevation = max(-0.5f, min(camera.elevation, 0.5f));
+	camera.elevation = max(-0.9f, min(camera.elevation, 0.9f));
 
 	if(GetAsyncKeyState('W') != 0) {
 		camera.pos = VectorAdd(camera.pos, VectorMul(camera.front, CAM_MOVESPEED));
@@ -706,6 +541,8 @@ void shuffle(int *array, size_t n) {
 
 // Draw the scene to the screen
 void draw() {
+	/////////////////////// PART 1: SIMULATION /////////////////////////////////
+
 	// Grab buffers for OpenCL
 	acquireGLBuffer(particles.particleBuffer[particles.currentBuffer]);
 	acquireGLBuffer(particles.particleBuffer[1 - particles.currentBuffer]);
@@ -807,7 +644,7 @@ void draw() {
 	clSetKernelArg(openCLKernels.simulationKernel, 7, sizeof(cl_mem), (void*)&particles.cellSelectBuffer);
 
 	clSetKernelArg(openCLKernels.simulationKernel, 8, sizeof(cl_float), &dT);
-	clSetKernelArg(openCLKernels.simulationKernel, 9, sizeof(cl_float), &angle);
+	clSetKernelArg(openCLKernels.simulationKernel, 9, sizeof(cl_float), &time);
 	clSetKernelArg(openCLKernels.simulationKernel, 10, sizeof(cl_int), &numParticles);
 
 	clSetKernelArg(openCLKernels.simulationKernel, 11, sizeof(cl_mem), &particles.terrainBuffer);
@@ -826,6 +663,8 @@ void draw() {
 
 	// Swap particle buffers
 	particles.currentBuffer = 1 - particles.currentBuffer;
+
+	//////////////////////// PART 2: RENDERIING ////////////////////////////////
 
 	// Clear everything first thing.
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -869,6 +708,12 @@ void draw() {
 	MatrixAsUniform(objectShader.normalviewMatrix, normalview);
 
 	// Set heightmap texture
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, terrain.heightTexture );
+	glUniform1i(objectShader.terrainTexture, 0);
+
+	// Turn off culling
+	glDisable(GL_CULL_FACE);
 
 	// Send element buffer to GPU and draw.
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, terrain.elementBuffer);
@@ -880,6 +725,9 @@ void draw() {
 		(void*)0
 	);
 	
+	// Turn culling back on
+	glEnable(GL_CULL_FACE);
+
 	// Switch to low-res viewport
 	glViewport(0, 0, WINDOW_WIDTH / RESOLUTION_DIVIDER, WINDOW_HEIGHT / RESOLUTION_DIVIDER);
 
@@ -941,6 +789,11 @@ void draw() {
 	MatrixAsUniform(particleThicknessShader.modelviewMatrix, modelview);
 	MatrixAsUniform(particleThicknessShader.projectionMatrix, projectionLowres);
 	glUniform2f(particleThicknessShader.screenSize, WINDOW_WIDTH / RESOLUTION_DIVIDER, WINDOW_HEIGHT / RESOLUTION_DIVIDER);
+
+	// Set textures
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, framebuffers.backgroundTexture);
+	glUniform1i(particleThicknessShader.terrainTexture, 0);
 
 	// Bind new buffer and set up arrtibutes
 	glBindBuffer(GL_ARRAY_BUFFER, particles.vertexBuffer[particles.currentBuffer]);
@@ -1071,7 +924,7 @@ void draw() {
 	glUniform1i(liquidShadeShader.particleThicknessTexture, 1);
 
 	glActiveTexture(GL_TEXTURE2);
-	glBindTexture(GL_TEXTURE_2D, defaultTextureData);
+	glBindTexture(GL_TEXTURE_2D, terrain.envTexture);
 	glUniform1i(liquidShadeShader.environmentTexture, 2);
 
 	glActiveTexture(GL_TEXTURE3);
@@ -1116,7 +969,7 @@ void draw() {
 
 	// Bind and set textures
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, defaultTextureData);
+	glBindTexture(GL_TEXTURE_2D, terrain.envTexture);
 	glUniform1i(compositionShader.backgroundTexture, 0);
 
 	glActiveTexture(GL_TEXTURE1);
@@ -1167,18 +1020,24 @@ void handleKeypress(unsigned char k, int x, int y) {
 			particles.windAngle = particles.windAngle - 0.05f;
 		break;
 
+		case 'x':
+			particles.windAngle = particles.windAngle + 3.14f;
+		break;
+
 		case 'c':
 			particles.windAngle = particles.windAngle + 0.05f;
 		break;
 
 		case 'r':
 			particles.windPower = max(0.0f, min(particles.windPower + 0.1f, 2.0f));
-			printf("Wind power: %f\n", particles.windPower);
 		break;
 
 		case 'f':
 			particles.windPower = max(0.0f, min(particles.windPower - 0.1f, 2.0f));
-			printf("Wind power: %f\n", particles.windPower);
+		break;
+
+		case 'v':
+			particles.windPower = 0.0f;
 		break;
 
 		case 'p': // Neat for debugging. Wait a second on 'p'.

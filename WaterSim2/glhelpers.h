@@ -22,5 +22,6 @@ GLuint loadTexture(const char *filename);
 void registerGlDebugLogger(unsigned int logLevel);
 char* loadFile(char* name);
 Matrix lookatMatrix(Vector eye, Vector center, Vector up);
+GLuint genFloatTexture(float *data, int width, int height);
 
 #endif

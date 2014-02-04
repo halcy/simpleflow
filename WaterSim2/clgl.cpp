@@ -241,9 +241,9 @@ void clRunKernel(cl_kernel kernel, const size_t minWorkSize[3], const size_t wor
 		printf("Failed to run kernel: %s\n", errorToString(clErr));
 		fgetc(stdin);
 	}
-	clErr = clFinish(openCLState.queue);
+	/*clErr = clFinish(openCLState.queue);
 	if(clErr != CL_SUCCESS) {
 		printf("Failed to finish kernel: %s\n", errorToString(clErr));
 		fgetc(stdin);
-	}
+	}*/
 }

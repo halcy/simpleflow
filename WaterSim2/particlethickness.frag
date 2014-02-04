@@ -10,6 +10,9 @@ in float eyespaceRadius;
 uniform mat4 projection;
 uniform vec2 screenSize;
 
+// Textures
+uniform sampler2D terrainTexture;
+
 // Output
 out float particleThickness;
 
@@ -26,7 +29,27 @@ void main() {
 	}
 
 	// Additive-Blend to get a sort-of thickness.
-	// TODO maybe a constant value isn't great here...
-	// particleThickness = 1.0f;
+	// Blur-ish effect is achieved by including length here.
 	particleThickness = 1.0f - length(normal);
+
+	// Depth needs to be calculated so we can check against terrain
+	// Set up rest of normal
+	normal.z = sqrt(1.0f - dist);
+	normal.y = -normal.y;
+	normal = normalize(normal);
+
+	// Calculate fragment position in eye space, project to find depth
+	vec4 fragPos = vec4(eyespacePos + normal * eyespaceRadius / screenSize.y, 1.0);
+	vec4 clipspacePos = fragPos * projection;
+
+	// Set up output
+	float far = gl_DepthRange.far; 
+	float near = gl_DepthRange.near;
+	float deviceDepth = clipspacePos.z / clipspacePos.w;
+	float fragDepth = (((far - near) * deviceDepth) + near + far) / 2.0;
+	gl_FragDepth = fragDepth;
+
+	if(fragDepth > texture(terrainTexture, gl_FragCoord.xy / screenSize).w) {
+		discard;
+	}
 }

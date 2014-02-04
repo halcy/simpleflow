@@ -88,5 +88,8 @@
     <ClInclude Include="pgmloader.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
+    <ClInclude Include="data.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

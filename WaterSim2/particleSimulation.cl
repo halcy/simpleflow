@@ -7,9 +7,6 @@
  * L. Diener, Jan. 2014
  **/
 
-#pragma OPENCL EXTENSION cl_khr_global_int32_base_atomics : enable
-#pragma OPENCL EXTENSION cl_khr_local_int32_base_atomics : enable
-
 ///////////////////////////////////////////// DEFINES /////////////////////////////////////////////
 
 // A randomly chosen number
@@ -88,10 +85,6 @@ float heightmap(float u, float v, const __global float* heightData) {
 
 float4 grad(float u, float v, const __global float* heightData) {
 	float off = (AABB_XZ * 2.0f * SCALE) / 4096.0f;
-	/*float yxp = heightData[(heightU + 1) + (heightV + 0) * 4096];
-	float yzp = heightData[(heightU + 0) + (heightV + 1) * 4096];
-	float yxn = heightData[(heightU - 1) + (heightV - 0) * 4096];
-	float yzn = heightData[(heightU - 0) + (heightV - 1) * 4096];*/
 	float dup = heightmap(u + off, v, heightData);
 	float dun = heightmap(u - off, v, heightData);
 	float dvp = heightmap(u, v + off, heightData);

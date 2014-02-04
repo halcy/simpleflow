@@ -13,13 +13,16 @@ uniform mat4 normalview;
 
 // To fragment shader
 out vec3 objectPos;
+out vec3 worldPos;
 
 void main() {
+	objectPos = vertex.xyz;
+
 	// Transform the vertex according to modelview
 	vec4 viewVertex;	
 	viewVertex = vertex * modelview;
+	worldPos = viewVertex.xyz;
 
 	// Project and send to the fragment shader
 	gl_Position = viewVertex * projection;
-	objectPos = vertex.xyz;
 }

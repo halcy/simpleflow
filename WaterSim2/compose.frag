@@ -23,7 +23,7 @@ vec2 spheremap(vec3 dir) {
 
 void main() {
 	vec3 dir = normalize(vec3((coords.xy - vec2(0.5f)) * 2.0f, -1.0f));
-	dir = (modelview * vec4(dir, 1.0f)).xyz;
+	dir = mat3(modelview) * dir;
 	vec2 mapCoords = spheremap(dir);
 
 	vec4 terrainColor = texture(terrainTexture, coords);
