@@ -232,18 +232,18 @@ void clRunKernel(cl_kernel kernel, const size_t minWorkSize[3], const size_t wor
 	}
 
 	size_t workSize[3];
-	/*for(int i = 0; i < dimensions; i++) {
+	for(int i = 0; i < dimensions; i++) {
 		workSize[i] = adjustWorkSize(minWorkSize[i], workgroupSize[i]);
-	}*/
+	}
 
-	cl_int clErr = clEnqueueNDRangeKernel(openCLState.queue, kernel, dimensions, NULL, minWorkSize, workgroupSize, 0, NULL, NULL);
+	cl_int clErr = clEnqueueNDRangeKernel(openCLState.queue, kernel, dimensions, NULL, workSize, workgroupSize, 0, NULL, NULL);
 	if(clErr != CL_SUCCESS) {
 		printf("Failed to run kernel: %s\n", errorToString(clErr));
 		fgetc(stdin);
 	}
-	/*clErr = clFinish(openCLState.queue);
+	clErr = clFinish(openCLState.queue);
 	if(clErr != CL_SUCCESS) {
 		printf("Failed to finish kernel: %s\n", errorToString(clErr));
 		fgetc(stdin);
-	}*/
+	}
 }

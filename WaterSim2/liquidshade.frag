@@ -15,6 +15,7 @@ uniform sampler2D velocityTexture;
 uniform vec2 screenSize;
 uniform mat4 projection;
 uniform mat4 modelview;
+uniform int useThickness;
 
 // Output
 out vec4 outColor;
@@ -93,7 +94,7 @@ void main() {
 
 	vec3 normal = eyespaceNormal(coords);
 	normal = normal * inverse(mat3(modelview));
-	normal.xz = normal.zx;
+	normal.xz = -normal.xz;
 
 	vec3 lightDir = vec3(1.0f, 1.0f, -1.0f);
 
@@ -121,7 +122,11 @@ void main() {
 		vec4 particleColor = exp(-vec4(0.6f, 0.2f, 0.05f, 3.0f) * thickness);
 		particleColor.w = clamp(1.0f - particleColor.w, 0.0f, 1.0f);
 		particleColor.rgb = (lambert + 0.2f) * particleColor.rgb * (1.0f - specular) + specular * environmentColor.rgb;
-		
+		if(useThickness == 0) {
+			particleColor.w = 1.0f;
+			particleColor.rgb = vec3(lambert + 0.2f);
+		}
+
 		// Oil
 		/*particleColor.rgb = specular * environmentColor.rgb;
 		particleColor.w = 1.0f;*/

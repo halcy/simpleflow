@@ -117,6 +117,8 @@ struct {
 	GLuint particleTexture;
 	GLuint particleThicknessTexture;
 	GLuint velocityTexture;
+
+	GLuint useThickness;
 } liquidShadeShader;
 
 struct {

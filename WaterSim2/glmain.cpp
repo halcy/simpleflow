@@ -44,6 +44,11 @@ float centeredUnitRand() {
 	return (((float)rand()/(float)RAND_MAX) - 0.5f);
 }
 
+// Turn features on/off
+int smoothingIterations = SMOOTHING_ITERATIONS;
+float timeStep = TIMESTEP;
+int useThickness = 1;
+
 //////////////////////////////// INIT FUNCTIONS ////////////////////////////////
 
 // Make a window for doing OpenGL
@@ -455,6 +460,7 @@ void initShaders() {
 	liquidShadeShader.projectionMatrix = glGetUniformLocation(liquidShadeShader.shaderProgram, "projection");
 	liquidShadeShader.modelviewMatrix = glGetUniformLocation(liquidShadeShader.shaderProgram, "modelview");
 	liquidShadeShader.screenSize = glGetUniformLocation(liquidShadeShader.shaderProgram, "screenSize");
+	liquidShadeShader.useThickness = glGetUniformLocation(liquidShadeShader.shaderProgram, "useThickness");
 
 	// Output
 	glBindFragDataLocation(liquidShadeShader.shaderProgram, 0, "outColor");
@@ -482,9 +488,6 @@ void initShaders() {
 void updateI(int) { update(); }
 
 void update() {
-	// Update things here.
-	time += 0.02f;
-
 	// Redraw screen now, please, and call again in 15ms.
 	glutPostRedisplay();
 	glutTimerFunc(15, updateI, 0);
@@ -547,6 +550,9 @@ void shuffle(int *array, size_t n) {
 
 // Draw the scene to the screen
 void draw() {
+	// Update time
+	time += 2.0f * timeStep;
+
 	/////////////////////// PART 1: SIMULATION /////////////////////////////////
 
 	// Grab buffers for OpenCL
@@ -637,7 +643,7 @@ void draw() {
 	clFinish(clCommandQueue());
 
 	// Integrate position
-	float dT = TIMESTEP;
+	float dT = timeStep;
 	clSetKernelArg(openCLKernels.simulationKernel, 0, sizeof(cl_mem), &particles.particleBuffer[particles.currentBuffer]);
 	clSetKernelArg(openCLKernels.simulationKernel, 1, sizeof(cl_mem), &particles.particleBuffer[1 - particles.currentBuffer]);
 	clSetKernelArg(openCLKernels.simulationKernel, 2, sizeof(cl_mem), &particles.velocityBuffer[particles.currentBuffer]);
@@ -899,7 +905,7 @@ void draw() {
 	// Smoothing loop
 	glDisable(GL_DEPTH_TEST);
 	pingpong = 0;
-	for(int i = 0; i < SMOOTHING_ITERATIONS; i++) {
+	for(int i = 0; i < smoothingIterations; i++) {
 		// Bind no FBO
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -950,6 +956,7 @@ void draw() {
 	glUniform2f(liquidShadeShader.screenSize, WINDOW_WIDTH, WINDOW_HEIGHT);
 	MatrixAsUniform(liquidShadeShader.modelviewMatrix, modelview);
 	MatrixAsUniform(liquidShadeShader.projectionMatrix, projection);
+	glUniform1i(liquidShadeShader.useThickness, useThickness);
 
 	// Draw a quad
     glDisable(GL_DEPTH_TEST);
@@ -1049,6 +1056,30 @@ void handleKeypress(unsigned char k, int x, int y) {
 
 		case 'f':
 			particles.windPower = max(0.0f, min(particles.windPower - 0.1f, 2.0f));
+		break;
+
+		case '1':
+			timeStep =  timeStep - (TIMESTEP / 5.0f);
+		break;
+
+		case '2':
+			timeStep =  -timeStep;
+		break;
+
+		case '3':
+			timeStep = timeStep + (TIMESTEP / 5.0f);
+		break;
+
+		case '4':
+			smoothingIterations = max(0.0f, smoothingIterations - 10);
+		break;
+
+		case '5':
+			smoothingIterations = smoothingIterations + 10;
+		break;
+
+		case '6':
+			useThickness = 1 - useThickness;
 		break;
 
 		case 'v':
