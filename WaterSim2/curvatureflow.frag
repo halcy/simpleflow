@@ -26,7 +26,9 @@ vec3 meanCurvature(vec2 pos) {
 
 	// Take finite differences
 	// Central differences give better results than one-sided here.
-	// TODO better boundary conditions, possibly
+	// TODO better boundary conditions, possibly.
+	// Remark: This is not easy, get to choose between bad oblique view smoothing
+	// or merging of unrelated particles
 	float zdxp = texture(particleTexture, pos + dx);
 	float zdxn = texture(particleTexture, pos - dx);
 	float zdx = 0.5f * (zdxp - zdxn);

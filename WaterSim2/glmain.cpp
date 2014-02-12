@@ -565,7 +565,7 @@ void draw() {
 
 	cl_uint workSize[3] = {numParticles, 0, 0};
 	cl_uint gridWorkSize[3] = {gridElements, 0, 0};
-	cl_uint workgroupSize[3] = {1024, 0, 0};
+	cl_uint workgroupSize[3] = {256, 0, 0};
 
 	// Clear grid
 	clSetKernelArg(openCLKernels.gridClearKernel, 0, sizeof(cl_mem), &particles.gridSizeBuffer);
