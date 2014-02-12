@@ -3,6 +3,8 @@ simpleflow
 
 A simple OpenCL / OpenGL fluid simulation and renderer.
 
+[Short demonstration video (youtube)](https://www.youtube.com/watch?v=KD2UqBCqfjA)
+
 Warning: Requires a fairly powerful GPU!
 
 Controls: 
