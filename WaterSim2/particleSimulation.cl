@@ -29,7 +29,7 @@
 #define KERNEL_RADIUS 0.1f
 #define REST_DENSITY 500.0f
 #define GAS_CONSTANT 1000.0f
-#define VISCOSITY_CONSTANT 60.0f
+#define VISCOSITY_CONSTANT 20.0f
 #define DAMPENING 0.85f
 
 // Grid information
@@ -52,7 +52,7 @@
 #define GRID_FUMBLE(x) (x)
 
 // Maximum particles to check for density calculations and such
-#define MAX_PARTICLES 8 // 32 for more accuracy, but 8 is good enough
+#define MAX_PARTICLES 16 // 32 for more accuracy, but 8 is good enough
 
 // To prevent obvious numerical explosions, clamp various things.
 #define RHO_CLAMP_LOW 500.0f

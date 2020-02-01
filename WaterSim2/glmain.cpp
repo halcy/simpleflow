@@ -282,6 +282,10 @@ void initObjects() {
 	);
 
 	free(terrainElements);
+
+    // Set up some wind
+    particles.windPower = 1.0;
+    particles.windAngle = 1.0;
 }
 
 // Create an OpenCL program and kernels

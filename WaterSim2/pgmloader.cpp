@@ -47,7 +47,6 @@ float* loadPGM(const char* fileName, int w, int h) {
 			pos++;
 		}
 		pos++;
-        printf("%d\n", pos);
 
         float* dataFloats = (float*)malloc(sizeof(float) * w * h);
         float minv = 10000000000.0f;

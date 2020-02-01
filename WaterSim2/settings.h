@@ -11,7 +11,7 @@
 // #define DEBUG
 
 // Particle settings
-#define NUM_PARTICLES (4096*64*4)
+#define NUM_PARTICLES (4096*64)
 
 // Grid size for the acceleration grid.
 // Note that if this is not a power of two, things WILL break.
