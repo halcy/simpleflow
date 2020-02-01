@@ -16,7 +16,7 @@ uniform sampler2D highTexture;
 out vec4 outColor;
 
 float heightmap(vec2 coords) {
-	return texture(terrainTexture, coords);
+	return texture(terrainTexture, coords).x;
 }
 
 vec2 heightmapCoords(vec2 coordsIn) {

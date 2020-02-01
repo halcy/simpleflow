@@ -33,9 +33,9 @@
 #define DAMPENING 0.85f
 
 // Grid information
-#define GRID_SIZE_A ((int)128)
-#define GRID_SIZE_XZ ((int)220)
-#define GRID_SIZE_Y ((int)42)
+#define GRID_SIZE_A ((int)128*2)
+#define GRID_SIZE_XZ ((int)220*2)
+#define GRID_SIZE_Y ((int)42*2)
 
 #define GRID_HALF_XZ ((float)GRID_SIZE_XZ * KERNEL_RADIUS * 0.5f)
 #define GRID_HALF_Y ((float)GRID_SIZE_Y * KERNEL_RADIUS * 0.5f)
@@ -46,15 +46,18 @@
 #define GRID_ID(p) (int)(GRID_COORD_XZ((p).x) + GRID_COORD_Y((p).y) * GRID_SIZE_Y + GRID_COORD_XZ((p).z) * GRID_SIZE_Y * GRID_SIZE_XZ)
 
 // Try not to access things outside
-#define GRID_FUMBLE(x) max(0, min((x), GRID_SIZE_A * GRID_SIZE_A * GRID_SIZE_A))
+// #define GRID_FUMBLE(x) max(0, min((x), GRID_SIZE_A * GRID_SIZE_A * GRID_SIZE_A))
+
+// For MAXIMUM PERFORMANCE, a noop
+#define GRID_FUMBLE(x) (x)
 
 // Maximum particles to check for density calculations and such
-#define MAX_PARTICLES 32
+#define MAX_PARTICLES 8 // 32 for more accuracy, but 8 is good enough
 
 // To prevent obvious numerical explosions, clamp various things.
 #define RHO_CLAMP_LOW 500.0f
 #define RHO_CLAMP_HIGH 1000000.0f
-#define VELOCITY_CLAMP 4.0f
+#define VELOCITY_CLAMP 8.0f
 
 // Terrain settings
 #define SCALE 8.0f

@@ -30,9 +30,9 @@ vec2 spheremap(vec3 dir) {
 }
 
 vec3 eyespacePos(vec2 pos) {
-	float depth = texture(particleTexture, pos);
+	float depth = texture(particleTexture, pos).x;
 	pos = (pos - vec2(0.5f)) * 2.0f;
-	return(depth * vec3(-pos.x * projection[0][0], -pos.y * projection[1][1], 1.0f));
+	return(depth * vec3(-pos.x * projection[0][0], -pos.y / projection[1][1], 1.0f));
 }
 
 // Compute eye-space normal. Adapted from PySPH.
@@ -42,16 +42,16 @@ vec3 eyespaceNormal(vec2 pos) {
 	vec2 dy = vec2(0.0f, 1.0f / screenSize.y);
 
 	// Central z
-	float zc =  texture(particleTexture, pos);
+	float zc =  texture(particleTexture, pos).x;
 
 	// Derivatives of z
 	// For shading, one-sided only-the-one-that-works version
-	float zdxp = texture(particleTexture, pos + dx);
-	float zdxn = texture(particleTexture, pos - dx);
+	float zdxp = texture(particleTexture, pos + dx).x;
+	float zdxn = texture(particleTexture, pos - dx).x;
 	float zdx = (zdxp == 0.0f) ? (zdxn == 0.0f ? 0.0f : (zc - zdxn)) : (zdxp - zc);
 
-	float zdyp = texture(particleTexture, pos + dy);
-	float zdyn = texture(particleTexture, pos - dy);
+	float zdyp = texture(particleTexture, pos + dy).x;
+	float zdyn = texture(particleTexture, pos - dy).x;
 	float zdy = (zdyp == 0.0f) ? (zdyn == 0.0f ? 0.0f : (zc - zdyn)) : (zdyp - zc);
 
 	// Projection inversion
@@ -88,9 +88,9 @@ float fresnel(float rr1, float rr2, vec3 n, vec3 d) {
 }
 
 void main() {
-	float particleDepth = texture(particleTexture, coords);
-	float particleThickness = texture(particleThicknessTexture, coords);
-	float velocity = texture(velocityTexture, coords);
+	float particleDepth = texture(particleTexture, coords).x;
+	float particleThickness = texture(particleThicknessTexture, coords).x;
+	float velocity = texture(velocityTexture, coords).x;
 
 	vec3 normal = eyespaceNormal(coords);
 	normal = normal * inverse(mat3(modelview));
@@ -105,7 +105,7 @@ void main() {
 		vec3 pos = eyespacePos(coords);
 		pos = (vec4(pos, 1.0f) * inverse(modelview)).xyz;
 
-		float thickness = vec4(particleThickness) / 10.0f;
+		float thickness = particleThickness / 10.0f;
 
 		float lambert = max(0.0f, dot(normalize(lightDir), normal));
 		

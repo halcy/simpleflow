@@ -22,20 +22,20 @@ vec3 meanCurvature(vec2 pos) {
 	vec2 dy = vec2(0.0f, 1.0f / screenSize.y);
 
 	// Central z value
-	float zc =  texture(particleTexture, pos);
+	float zc =  texture(particleTexture, pos).x;
 
 	// Take finite differences
 	// Central differences give better results than one-sided here.
 	// TODO better boundary conditions, possibly.
 	// Remark: This is not easy, get to choose between bad oblique view smoothing
 	// or merging of unrelated particles
-	float zdxp = texture(particleTexture, pos + dx);
-	float zdxn = texture(particleTexture, pos - dx);
+	float zdxp = texture(particleTexture, pos + dx).x;
+	float zdxn = texture(particleTexture, pos - dx).x;
 	float zdx = 0.5f * (zdxp - zdxn);
 	zdx = (zdxp == 0.0f || zdxn == 0.0f) ? 0.0f : zdx;
 
-	float zdyp = texture(particleTexture, pos + dy);
-	float zdyn = texture(particleTexture, pos - dy);
+	float zdyp = texture(particleTexture, pos + dy).x;
+	float zdyn = texture(particleTexture, pos - dy).x;
 	float zdy = 0.5f * (zdyp - zdyn);
 	zdy = (zdyp == 0.0f || zdyn == 0.0f) ? 0.0f : zdy;
 
@@ -44,14 +44,14 @@ vec3 meanCurvature(vec2 pos) {
 	float zdy2 = zdyp + zdyn - 2.0f * zc;
 
 	// Second order finite differences, alternating variables
-	float zdxpyp = texture(particleTexture, pos + dx + dy);
-	float zdxnyn = texture(particleTexture, pos - dx - dy);
-	float zdxpyn = texture(particleTexture, pos + dx - dy);
-	float zdxnyp = texture(particleTexture, pos - dx + dy);
+	float zdxpyp = texture(particleTexture, pos + dx + dy).x;
+	float zdxnyn = texture(particleTexture, pos - dx - dy).x;
+	float zdxpyn = texture(particleTexture, pos + dx - dy).x;
+	float zdxnyp = texture(particleTexture, pos - dx + dy).x;
 	float zdxy = (zdxpyp + zdxnyn - zdxpyn - zdxnyp) / 4.0f;
 
 	// Projection transform inversion terms
-	float cx = 2.0f / (screenSize * -projection[0][0]);
+	float cx = 2.0f / (screenSize * -projection[0][0]).x;
 	float cy = 2.0f / (screenSize.y * -projection[1][1]);
 
 	// Normalization term
@@ -72,7 +72,7 @@ vec3 meanCurvature(vec2 pos) {
 }
 
 void main() {
-	float particleDepth = texture(particleTexture, coords);
+	float particleDepth = texture(particleTexture, coords).x;
 
 	if(particleDepth == 0.0f) {
 		outDepth = 0.0f;

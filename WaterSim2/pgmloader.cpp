@@ -10,13 +10,13 @@
 #pragma warning(disable: 4996)
 
 uint8_t* readFileBytes(const char *name)  {  
-	FILE *fl = fopen(name, "r");  
+	FILE *fl = fopen(name, "rb");  
 	fseek(fl, 0, SEEK_END);  
-	long len = ftell(fl);  
-	uint8_t *ret = (uint8_t*)malloc(len);  
-	fseek(fl, 0, SEEK_SET);  
-	fread(ret, 1, len, fl);  
-	fclose(fl);  
+	size_t len = ftell(fl);
+	uint8_t *ret = (uint8_t*)malloc(len * sizeof(uint8_t));
+	fseek(fl, 0, SEEK_SET);
+    fread(ret, sizeof(uint8_t), len, fl);
+	fclose(fl);
 	return ret;  
 }  
 
@@ -24,7 +24,7 @@ float* loadPGM(const char* fileName, int w, int h) {
 		uint8_t* inputData = readFileBytes(fileName);
 
         // Remove header
-		int pos = 0;
+		size_t pos = 0;
 		while(inputData[pos] != '\n') {
 			pos++;
 		}
@@ -47,24 +47,21 @@ float* loadPGM(const char* fileName, int w, int h) {
 			pos++;
 		}
 		pos++;
+        printf("%d\n", pos);
 
         float* dataFloats = (float*)malloc(sizeof(float) * w * h);
-        float minv = 100000000000000.0f;
+        float minv = 10000000000.0f;
         float maxv = 0.0f;
 		
-        for(int i = 0; i < w * h; i++) {
-            uint8_t pixelData[2];
-            pixelData[0] = inputData[2*i+1 + pos];
-            pixelData[1] = inputData[2*i + pos];
-            uint16_t* pixelDataProper = (uint16_t*)pixelData;
-            dataFloats[i] = (float)pixelDataProper[0];
+        for(size_t i = 0; i < w * h; i++) {
+            dataFloats[i] = (float)((inputData[2 * i + pos] << 8) + inputData[2 * i + 1 + pos]);
             minv = min(minv, dataFloats[i]);
             maxv = max(maxv, dataFloats[i]);
         }
 
-        // Normalize
+        // Normalize and fit into range we want
         for(int i = 0; i < w * h; i++) {
-            dataFloats[i] = (dataFloats[i] - minv) / (maxv - minv);
+            dataFloats[i] = ((dataFloats[i] - minv) / (maxv - minv)) * 0.07;
         }
 		
 		free(inputData);

@@ -1,6 +1,6 @@
 /**
- * A particle fluid renderer.
- */
+    * A particle fluid renderer.
+    */
 
 // Settings
 #include "settings.h"
@@ -225,7 +225,8 @@ void initObjects() {
 	free(zeroGrid);
 
 	// Load terrain
-	terrain.heightData = loadPGM("grand_canyon.pgm", 4096, 4096);
+    terrain.heightData = loadPGM("grand_canyon.pgm", 4096, 4096);
+    
 	particles.terrainBuffer = clCreateBuffer(
 		clContext(), 
 		CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, 
@@ -554,127 +555,128 @@ void draw() {
 	time += 2.0f * timeStep;
 
 	/////////////////////// PART 1: SIMULATION /////////////////////////////////
+    int pingpong = 0;
+    for(int iter = 0; iter < ITERS_PER_FRAME; iter++) {
+	    // Grab buffers for OpenCL
+	    acquireGLBuffer(particles.particleBuffer[particles.currentBuffer]);
+	    acquireGLBuffer(particles.particleBuffer[1 - particles.currentBuffer]);
 
-	// Grab buffers for OpenCL
-	acquireGLBuffer(particles.particleBuffer[particles.currentBuffer]);
-	acquireGLBuffer(particles.particleBuffer[1 - particles.currentBuffer]);
+	    // Prepare to run some kernels
+	    cl_int numParticles = NUM_PARTICLES;
+	    cl_int gridElements = GRID_SIZE * GRID_SIZE * GRID_SIZE;
 
-	// Prepare to run some kernels
-	cl_int numParticles = NUM_PARTICLES;
-	cl_int gridElements = GRID_SIZE * GRID_SIZE * GRID_SIZE;
+	    cl_uint workSize[3] = {numParticles, 0, 0};
+	    cl_uint gridWorkSize[3] = {gridElements, 0, 0};
+	    cl_uint workgroupSize[3] = {256, 0, 0};
 
-	cl_uint workSize[3] = {numParticles, 0, 0};
-	cl_uint gridWorkSize[3] = {gridElements, 0, 0};
-	cl_uint workgroupSize[3] = {256, 0, 0};
+	    // Clear grid
+	    clSetKernelArg(openCLKernels.gridClearKernel, 0, sizeof(cl_mem), &particles.gridSizeBuffer);
+	    clSetKernelArg(openCLKernels.gridClearKernel, 1, sizeof(cl_int), &gridElements);
+	    clRunKernel(openCLKernels.gridClearKernel, gridWorkSize, workgroupSize);
 
-	// Clear grid
-	clSetKernelArg(openCLKernels.gridClearKernel, 0, sizeof(cl_mem), &particles.gridSizeBuffer);
-	clSetKernelArg(openCLKernels.gridClearKernel, 1, sizeof(cl_int), &gridElements);
-	clRunKernel(openCLKernels.gridClearKernel, gridWorkSize, workgroupSize);
+	    // Compute grid positions
+	    clSetKernelArg(openCLKernels.gridKernel, 0, sizeof(cl_mem), &particles.particleBuffer[particles.currentBuffer]);
+	    clSetKernelArg(openCLKernels.gridKernel, 1, sizeof(cl_mem), &particles.offsetBuffer);
+	    clSetKernelArg(openCLKernels.gridKernel, 2, sizeof(cl_mem), &particles.gridSizeBuffer);
+	    clSetKernelArg(openCLKernels.gridKernel, 3, sizeof(cl_int), &numParticles);
+	    clRunKernel(openCLKernels.gridKernel, workSize, workgroupSize);
 
-	// Compute grid positions
-	clSetKernelArg(openCLKernels.gridKernel, 0, sizeof(cl_mem), &particles.particleBuffer[particles.currentBuffer]);
-	clSetKernelArg(openCLKernels.gridKernel, 1, sizeof(cl_mem), &particles.offsetBuffer);
-	clSetKernelArg(openCLKernels.gridKernel, 2, sizeof(cl_mem), &particles.gridSizeBuffer);
-	clSetKernelArg(openCLKernels.gridKernel, 3, sizeof(cl_int), &numParticles);
-	clRunKernel(openCLKernels.gridKernel, workSize, workgroupSize);
+	    // Compute prefix sum for grid
+	    clSetKernelArg(openCLKernels.prefixSumKernel, 2, sizeof(cl_uint), (void*)&gridElements);
 
-	// Compute prefix sum for grid
-	clSetKernelArg(openCLKernels.prefixSumKernel, 2, sizeof(cl_uint), (void*)&gridElements);
+	    for(cl_int offset = 1; offset <= gridElements; offset *= 2) {
+		    if(offset == 1) {
+			    clSetKernelArg(openCLKernels.prefixSumKernel, 0, sizeof(cl_mem), (void*)&particles.gridSizeBuffer);
+		    }
+		    else {
+			    clSetKernelArg(openCLKernels.prefixSumKernel, 0, sizeof(cl_mem), (void*)&(pingpong == 0 ? particles.gridBuffer[0] : particles.gridBuffer[1]));
+		    }
+		    clSetKernelArg(openCLKernels.prefixSumKernel, 1, sizeof(cl_mem), (void*)&(pingpong == 0 ? particles.gridBuffer[1] : particles.gridBuffer[0]));
+		    clSetKernelArg(openCLKernels.prefixSumKernel, 3, sizeof(cl_int), (void*)&offset);
+		    clRunKernel(openCLKernels.prefixSumKernel, gridWorkSize, workgroupSize);
+		    pingpong = 1 - pingpong;
+	    }
 
-	int pingpong = 0;
-	for(cl_int offset = 1; offset <= gridElements; offset *= 2) {
-		if(offset == 1) {
-			clSetKernelArg(openCLKernels.prefixSumKernel, 0, sizeof(cl_mem), (void*)&particles.gridSizeBuffer);
-		}
-		else {
-			clSetKernelArg(openCLKernels.prefixSumKernel, 0, sizeof(cl_mem), (void*)&(pingpong == 0 ? particles.gridBuffer[0] : particles.gridBuffer[1]));
-		}
-		clSetKernelArg(openCLKernels.prefixSumKernel, 1, sizeof(cl_mem), (void*)&(pingpong == 0 ? particles.gridBuffer[1] : particles.gridBuffer[0]));
-		clSetKernelArg(openCLKernels.prefixSumKernel, 3, sizeof(cl_int), (void*)&offset);
-		clRunKernel(openCLKernels.prefixSumKernel, gridWorkSize, workgroupSize);
-		pingpong = 1 - pingpong;
-	}
+	    // Reorganize particles 
+	    clSetKernelArg(openCLKernels.gridReorderKernel, 0, sizeof(cl_mem), &particles.particleBuffer[particles.currentBuffer]);
+	    clSetKernelArg(openCLKernels.gridReorderKernel, 1, sizeof(cl_mem), &particles.particleBuffer[1 - particles.currentBuffer]);
+	    clSetKernelArg(openCLKernels.gridReorderKernel, 2, sizeof(cl_mem), &particles.velocityBuffer[particles.currentBuffer]);
+	    clSetKernelArg(openCLKernels.gridReorderKernel, 3, sizeof(cl_mem), &particles.velocityBuffer[1 - particles.currentBuffer]);
+	    clSetKernelArg(openCLKernels.gridReorderKernel, 4, sizeof(cl_mem), &particles.offsetBuffer);
+	    clSetKernelArg(openCLKernels.gridReorderKernel, 5, sizeof(cl_mem), (void*)&particles.gridSizeBuffer);
+	    clSetKernelArg(openCLKernels.gridReorderKernel, 6, sizeof(cl_mem), (void*)&(pingpong == 0 ? particles.gridBuffer[0] : particles.gridBuffer[1]));
+	    clSetKernelArg(openCLKernels.gridReorderKernel, 7, sizeof(cl_int), &numParticles);
+	    clRunKernel(openCLKernels.gridReorderKernel, workSize, workgroupSize);
 
-	// Reorganize particles 
-	clSetKernelArg(openCLKernels.gridReorderKernel, 0, sizeof(cl_mem), &particles.particleBuffer[particles.currentBuffer]);
-	clSetKernelArg(openCLKernels.gridReorderKernel, 1, sizeof(cl_mem), &particles.particleBuffer[1 - particles.currentBuffer]);
-	clSetKernelArg(openCLKernels.gridReorderKernel, 2, sizeof(cl_mem), &particles.velocityBuffer[particles.currentBuffer]);
-	clSetKernelArg(openCLKernels.gridReorderKernel, 3, sizeof(cl_mem), &particles.velocityBuffer[1 - particles.currentBuffer]);
-	clSetKernelArg(openCLKernels.gridReorderKernel, 4, sizeof(cl_mem), &particles.offsetBuffer);
-	clSetKernelArg(openCLKernels.gridReorderKernel, 5, sizeof(cl_mem), (void*)&particles.gridSizeBuffer);
-	clSetKernelArg(openCLKernels.gridReorderKernel, 6, sizeof(cl_mem), (void*)&(pingpong == 0 ? particles.gridBuffer[0] : particles.gridBuffer[1]));
-	clSetKernelArg(openCLKernels.gridReorderKernel, 7, sizeof(cl_int), &numParticles);
-	clRunKernel(openCLKernels.gridReorderKernel, workSize, workgroupSize);
+	    particle* testData = (particle*)malloc(sizeof(cl_float) * numParticles * 4);
 
-	particle* testData = (particle*)malloc(sizeof(cl_float) * numParticles * 4);
+	    // Swap particle buffers
+	    particles.currentBuffer = 1 - particles.currentBuffer;
 
-	// Swap particle buffers
-	particles.currentBuffer = 1 - particles.currentBuffer;
+	    // Send new cell select buffer
+	    int cellSelect[27];
+	    for(int i = 0; i < 27; i++) {
+		    cellSelect[i] = i;
+	    }
+	    shuffle(cellSelect, 27);
+	    clEnqueueWriteBuffer(clCommandQueue(), particles.cellSelectBuffer, true, 0, 27 * sizeof(cl_int), cellSelect, 0, 0, 0);
+	    clFinish(clCommandQueue());
 
-	// Send new cell select buffer
-	int cellSelect[27];
-	for(int i = 0; i < 27; i++) {
-		cellSelect[i] = i;
-	}
-	shuffle(cellSelect, 27);
-	clEnqueueWriteBuffer(clCommandQueue(), particles.cellSelectBuffer, true, 0, 27 * sizeof(cl_int), cellSelect, 0, 0, 0);
-	clFinish(clCommandQueue());
+	    // Recalculate densities and normalized pressure derivatives
+	    clSetKernelArg(openCLKernels.dataKernel, 0, sizeof(cl_mem), &particles.particleBuffer[particles.currentBuffer]);
+	    clSetKernelArg(openCLKernels.dataKernel, 1, sizeof(cl_mem), &particles.dataBuffer);
 
-	// Recalculate densities and normalized pressure derivatives
-	clSetKernelArg(openCLKernels.dataKernel, 0, sizeof(cl_mem), &particles.particleBuffer[particles.currentBuffer]);
-	clSetKernelArg(openCLKernels.dataKernel, 1, sizeof(cl_mem), &particles.dataBuffer);
+	    clSetKernelArg(openCLKernels.dataKernel, 2, sizeof(cl_mem), (void*)&particles.gridSizeBuffer);
+	    clSetKernelArg(openCLKernels.dataKernel, 3, sizeof(cl_mem), (void*)&(pingpong == 0 ? particles.gridBuffer[1] : particles.gridBuffer[0]));
 
-	clSetKernelArg(openCLKernels.dataKernel, 2, sizeof(cl_mem), (void*)&particles.gridSizeBuffer);
-	clSetKernelArg(openCLKernels.dataKernel, 3, sizeof(cl_mem), (void*)&(pingpong == 0 ? particles.gridBuffer[1] : particles.gridBuffer[0]));
+	    clSetKernelArg(openCLKernels.dataKernel, 4, sizeof(cl_mem), (void*)&particles.cellSelectBuffer);
 
-	clSetKernelArg(openCLKernels.dataKernel, 4, sizeof(cl_mem), (void*)&particles.cellSelectBuffer);
+	    clSetKernelArg(openCLKernels.dataKernel, 5, sizeof(cl_int), &numParticles);
+	    clRunKernel(openCLKernels.dataKernel, workSize, workgroupSize);
 
-	clSetKernelArg(openCLKernels.dataKernel, 5, sizeof(cl_int), &numParticles);
-	clRunKernel(openCLKernels.dataKernel, workSize, workgroupSize);
+	    // Send new cell select buffer
+	    cellSelect[27];
+	    for(int i = 0; i < 27; i++) {
+		    cellSelect[i] = i;
+	    }
+	    shuffle(cellSelect, 27);
+	    clEnqueueWriteBuffer(clCommandQueue(), particles.cellSelectBuffer, true, 0, 27 * sizeof(cl_int), cellSelect, 0, 0, 0);
+	    clFinish(clCommandQueue());
 
-	// Send new cell select buffer
-	cellSelect[27];
-	for(int i = 0; i < 27; i++) {
-		cellSelect[i] = i;
-	}
-	shuffle(cellSelect, 27);
-	clEnqueueWriteBuffer(clCommandQueue(), particles.cellSelectBuffer, true, 0, 27 * sizeof(cl_int), cellSelect, 0, 0, 0);
-	clFinish(clCommandQueue());
-
-	// Integrate position
-	float dT = timeStep;
-	clSetKernelArg(openCLKernels.simulationKernel, 0, sizeof(cl_mem), &particles.particleBuffer[particles.currentBuffer]);
-	clSetKernelArg(openCLKernels.simulationKernel, 1, sizeof(cl_mem), &particles.particleBuffer[1 - particles.currentBuffer]);
-	clSetKernelArg(openCLKernels.simulationKernel, 2, sizeof(cl_mem), &particles.velocityBuffer[particles.currentBuffer]);
-	clSetKernelArg(openCLKernels.simulationKernel, 3, sizeof(cl_mem), &particles.velocityBuffer[1 - particles.currentBuffer]);
-	clSetKernelArg(openCLKernels.simulationKernel, 4, sizeof(cl_mem), &particles.dataBuffer);
+	    // Integrate position
+	    float dT = timeStep;
+	    clSetKernelArg(openCLKernels.simulationKernel, 0, sizeof(cl_mem), &particles.particleBuffer[particles.currentBuffer]);
+	    clSetKernelArg(openCLKernels.simulationKernel, 1, sizeof(cl_mem), &particles.particleBuffer[1 - particles.currentBuffer]);
+	    clSetKernelArg(openCLKernels.simulationKernel, 2, sizeof(cl_mem), &particles.velocityBuffer[particles.currentBuffer]);
+	    clSetKernelArg(openCLKernels.simulationKernel, 3, sizeof(cl_mem), &particles.velocityBuffer[1 - particles.currentBuffer]);
+	    clSetKernelArg(openCLKernels.simulationKernel, 4, sizeof(cl_mem), &particles.dataBuffer);
 	
-	clSetKernelArg(openCLKernels.simulationKernel, 5, sizeof(cl_mem), (void*)&particles.gridSizeBuffer);
-	clSetKernelArg(openCLKernels.simulationKernel, 6, sizeof(cl_mem), (void*)&(pingpong == 0 ? particles.gridBuffer[1] : particles.gridBuffer[0]));
+	    clSetKernelArg(openCLKernels.simulationKernel, 5, sizeof(cl_mem), (void*)&particles.gridSizeBuffer);
+	    clSetKernelArg(openCLKernels.simulationKernel, 6, sizeof(cl_mem), (void*)&(pingpong == 0 ? particles.gridBuffer[1] : particles.gridBuffer[0]));
 
-	clSetKernelArg(openCLKernels.simulationKernel, 7, sizeof(cl_mem), (void*)&particles.cellSelectBuffer);
+	    clSetKernelArg(openCLKernels.simulationKernel, 7, sizeof(cl_mem), (void*)&particles.cellSelectBuffer);
 
-	clSetKernelArg(openCLKernels.simulationKernel, 8, sizeof(cl_float), &dT);
-	clSetKernelArg(openCLKernels.simulationKernel, 9, sizeof(cl_float), &time);
-	clSetKernelArg(openCLKernels.simulationKernel, 10, sizeof(cl_int), &numParticles);
+	    clSetKernelArg(openCLKernels.simulationKernel, 8, sizeof(cl_float), &dT);
+	    clSetKernelArg(openCLKernels.simulationKernel, 9, sizeof(cl_float), &time);
+	    clSetKernelArg(openCLKernels.simulationKernel, 10, sizeof(cl_int), &numParticles);
 
-	clSetKernelArg(openCLKernels.simulationKernel, 11, sizeof(cl_mem), &particles.terrainBuffer);
+	    clSetKernelArg(openCLKernels.simulationKernel, 11, sizeof(cl_mem), &particles.terrainBuffer);
 
-	PaddedVector windDir = PadVector(
-		TransformVector(YAxisRotationMatrix(particles.windAngle), MakeVector(1.0f, 0.0f, 0.0f))
-	);
-	clSetKernelArg(openCLKernels.simulationKernel, 12, sizeof(cl_float) * 4, &windDir);
-	clSetKernelArg(openCLKernels.simulationKernel, 13, sizeof(cl_float), &particles.windPower);
+	    PaddedVector windDir = PadVector(
+		    TransformVector(YAxisRotationMatrix(particles.windAngle), MakeVector(1.0f, 0.0f, 0.0f))
+	    );
+	    clSetKernelArg(openCLKernels.simulationKernel, 12, sizeof(cl_float) * 4, &windDir);
+	    clSetKernelArg(openCLKernels.simulationKernel, 13, sizeof(cl_float), &particles.windPower);
 
-	clRunKernel(openCLKernels.simulationKernel, workSize, workgroupSize);
+	    clRunKernel(openCLKernels.simulationKernel, workSize, workgroupSize);
 
-	// Release buffers back to OpenGL
-	releaseGLBuffer(particles.particleBuffer[particles.currentBuffer]);
-	releaseGLBuffer(particles.particleBuffer[1 - particles.currentBuffer]);
+	    // Release buffers back to OpenGL
+	    releaseGLBuffer(particles.particleBuffer[particles.currentBuffer]);
+	    releaseGLBuffer(particles.particleBuffer[1 - particles.currentBuffer]);
 
-	// Swap particle buffers
-	particles.currentBuffer = 1 - particles.currentBuffer;
+	    // Swap particle buffers
+	    particles.currentBuffer = 1 - particles.currentBuffer;
+    }
 
 	//////////////////////// PART 2: RENDERIING ////////////////////////////////
 
@@ -767,6 +769,9 @@ void draw() {
 
 	// Activate shader
 	glUseProgram(particleShader.shaderProgram);
+
+    // Point size allowed
+    glEnable(GL_PROGRAM_POINT_SIZE);
 
 	// Set textures
 	glActiveTexture(GL_TEXTURE0);
@@ -1059,7 +1064,7 @@ void handleKeypress(unsigned char k, int x, int y) {
 		break;
 
 		case '1':
-			timeStep =  timeStep - (TIMESTEP / 5.0f);
+			timeStep =  timeStep - (TIMESTEP / 50.0f);
 		break;
 
 		case '2':
@@ -1067,7 +1072,7 @@ void handleKeypress(unsigned char k, int x, int y) {
 		break;
 
 		case '3':
-			timeStep = timeStep + (TIMESTEP / 5.0f);
+			timeStep = timeStep + (TIMESTEP / 50.0f);
 		break;
 
 		case '4':
